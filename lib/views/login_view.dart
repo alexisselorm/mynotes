@@ -1,6 +1,7 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:mynotes/constants/routes.dart';
+import 'package:mynotes/services/auth/auth_exceptions.dart';
+import 'package:mynotes/services/auth/auth_service.dart';
 
 class LoginView extends StatefulWidget {
   const LoginView({super.key});
@@ -37,30 +38,13 @@ class _LoginViewState extends State<LoginView> {
     final email = _emailController.text;
     final password = _passwordController.text;
     try {
-      final userCred = await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-
-      if (!userCred.user!.emailVerified) {
-        _showMessage('Please verify your email before logging in.');
-        Navigator.of(context)
-            .pushNamedAndRemoveUntil(verifyEmailRoute, (route) => false);
-      } else {
-        // Navigate to the main UI or home screen
-        Navigator.of(context)
-            .pushNamedAndRemoveUntil(notesRoute, (route) => false);
-      }
-    } on FirebaseAuthException catch (e) {
-      if (e.code == 'user-not-found') {
-        _showMessage('User not found');
-      } else if (e.code == 'wrong-password') {
-        _showMessage('Wrong password');
-      } else {
-        _showMessage('Error: ${e.message ?? e.code}');
-      }
-    } catch (e) {
-      _showMessage('Error: $e');
+      await AuthService.firebase().logIn(email: email, password: password);
+    } on WrongPasswordAuthException {
+      _showMessage('Wrong credentials');
+    } on UserNotFoundAuthException {
+      _showMessage('User not found');
+    } on GenericAuthException catch (e) {
+      _showMessage('Authentication error: ${e.toString()}');
     }
   }
 

@@ -1,6 +1,7 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:mynotes/constants/routes.dart';
+import 'package:mynotes/services/auth/auth_exceptions.dart';
+import 'package:mynotes/services/auth/auth_service.dart';
 
 class RegisterView extends StatefulWidget {
   const RegisterView({super.key});
@@ -37,21 +38,18 @@ class _RegisterViewState extends State<RegisterView> {
     final email = _emailController.text;
     final password = _passwordController.text;
     try {
-      await FirebaseAuth.instance.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-      final user = FirebaseAuth.instance.currentUser;
-      await user?.sendEmailVerification();
+      await AuthService.firebase().createUser(email: email, password: password);
+      final user = AuthService.firebase().currentUser;
+      await AuthService.firebase().sendEmailVerification();
       Navigator.of(context).pushNamed(verifyEmailRoute);
-    } on FirebaseAuthException catch (e) {
-      if (e.code == 'weak-password') {
-        _showMessage('The password provided is too weak.');
-      } else if (e.code == 'email-already-in-use') {
-        _showMessage('The account already exists for that email.');
-      } else {
-        _showMessage('Error: ${e.message ?? e.code}');
-      }
+    } on WeakPasswordAuthException catch (e) {
+      _showMessage('Weak password: ${e.toString()}');
+    } on EmailAlreadyInUseAuthException catch (e) {
+      _showMessage('Email already in use: ${e.toString()}');
+    } on InvalidEmailAuthException catch (e) {
+      _showMessage('Invalid email: ${e.toString()}');
+    } on GenericAuthException catch (e) {
+      _showMessage('Authentication error: ${e.toString()}');
     } catch (e) {
       _showMessage('Error: $e');
     }
