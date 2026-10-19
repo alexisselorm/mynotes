@@ -44,6 +44,8 @@ class _LoginViewState extends State<LoginView> {
 
       if (!userCred.user!.emailVerified) {
         _showMessage('Please verify your email before logging in.');
+        Navigator.of(context)
+            .pushNamedAndRemoveUntil(verifyEmailRoute, (route) => false);
       } else {
         // Navigate to the main UI or home screen
         Navigator.of(context)
