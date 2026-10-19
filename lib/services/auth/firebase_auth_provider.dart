@@ -9,7 +9,7 @@ import 'package:firebase_auth/firebase_auth.dart'
     show FirebaseAuth, FirebaseAuthException;
 
 class FirebaseAuthProvider implements AuthProvider {
-  final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
+  FirebaseAuth get _firebaseAuth => FirebaseAuth.instance;
 
   @override
   Future<void> initialize() async {

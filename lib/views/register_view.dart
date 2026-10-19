@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:mynotes/constants/routes.dart';
 import 'package:mynotes/services/auth/auth_exceptions.dart';
 import 'package:mynotes/services/auth/auth_service.dart';
 
@@ -39,9 +38,7 @@ class _RegisterViewState extends State<RegisterView> {
     final password = _passwordController.text;
     try {
       await AuthService.firebase().createUser(email: email, password: password);
-      final user = AuthService.firebase().currentUser;
       await AuthService.firebase().sendEmailVerification();
-      Navigator.of(context).pushNamed(verifyEmailRoute);
     } on WeakPasswordAuthException catch (e) {
       _showMessage('Weak password: ${e.toString()}');
     } on EmailAlreadyInUseAuthException catch (e) {
