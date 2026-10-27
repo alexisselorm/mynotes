@@ -16,7 +16,7 @@ class FakeFirebaseAuthProvider implements AuthProvider {
   Future<AuthUser> createUser({
     required String email,
     required String password,
-  }) async => AuthUser(isEmailVerified: false);
+  }) async => AuthUser(email: email, isEmailVerified: false);
 
   @override
   Future<AuthUser> logIn({
@@ -25,7 +25,7 @@ class FakeFirebaseAuthProvider implements AuthProvider {
   }) async {
     if (email == 'notfound@example.com') throw UserNotFoundAuthException();
     if (password != 'correct-password') throw WrongPasswordAuthException();
-    return AuthUser(isEmailVerified: true);
+    return AuthUser(email: email, isEmailVerified: true);
   }
 
   @override

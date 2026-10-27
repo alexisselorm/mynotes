@@ -72,3 +72,11 @@ class UserNotLoggedInAuthException implements Exception {
   @override
   String toString() => 'UserNotLoggedInAuthException: $message';
 }
+
+class UserDisabledAuthException implements Exception {
+  final String message;
+  UserDisabledAuthException([this.message = 'The user account is disabled.']);
+
+  @override
+  String toString() => 'UserDisabledAuthException: $message';
+}
