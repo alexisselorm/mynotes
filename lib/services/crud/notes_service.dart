@@ -7,7 +7,13 @@ import 'package:sqflite/sqflite.dart';
 import 'crud_exceptions.dart';
 
 class NotesService {
-  NotesService._sharedInstance();
+  NotesService._sharedInstance()
+    : _noteStreamController =
+          StreamController<List<DatabaseNotes>>.broadcast() {
+    _noteStreamController.onListen = () {
+      _noteStreamController.sink.add(_notes);
+    };
+  }
   static final NotesService _shared = NotesService._sharedInstance();
   factory NotesService() => _shared;
 
@@ -16,8 +22,7 @@ class NotesService {
   Database? _db;
   List<DatabaseNotes> _notes = [];
 
-  final _noteStreamController =
-      StreamController<List<DatabaseNotes>>.broadcast();
+  late final StreamController<List<DatabaseNotes>> _noteStreamController;
 
   Future<DatabaseUser> getOrCreateUser({required String email}) async {
     await _ensureDbIsOpen();
