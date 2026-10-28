@@ -20,6 +20,7 @@ class NotesService {
   Stream<List<DatabaseNotes>> get allNotes => _noteStreamController.stream;
 
   Database? _db;
+  Future<void>? _dbOpening;
   List<DatabaseNotes> _notes = [];
 
   late final StreamController<List<DatabaseNotes>> _noteStreamController;
@@ -113,12 +114,23 @@ class NotesService {
       where: '$idColumn = ?',
       whereArgs: [id],
     );
+    _notes.removeWhere((note) => note.id == id);
+    _emitNotes();
     if (deletedCount != 1) {
       throw CouldNotDeleteNoteException();
-    } else {
-      _notes.removeWhere((note) => note.id == id);
-      _emitNotes();
     }
+  }
+
+  Future<DatabaseNotes?> _findEmptyNote({required int userId}) async {
+    final db = _getDatabaseOrThrow();
+    final results = await db.query(
+      notesTable,
+      limit: 1,
+      where: '$textColumn = ? AND $userIdColumn = ?',
+      whereArgs: ['', userId],
+    );
+    if (results.isEmpty) return null;
+    return DatabaseNotes.fromRow(results.first);
   }
 
   Future<DatabaseNotes> createNote({
@@ -131,6 +143,13 @@ class NotesService {
 
     if (dbUser.id != owner.id) {
       throw CouldNotFindUserException();
+    }
+
+    final existingEmptyNote = await _findEmptyNote(userId: owner.id);
+    if (existingEmptyNote != null) {
+      // The new-note view created and then abandoned an empty note; reuse it
+      // so repeated visits don't pile up blank rows.
+      return updateNote(note: existingEmptyNote, text: text);
     }
 
     final createdAt = DateTime.now();
@@ -226,6 +245,20 @@ class NotesService {
     if (_db != null) {
       throw DatabaseAlreadyOpenException();
     }
+    final pendingOpen = _dbOpening;
+    if (pendingOpen != null) {
+      return pendingOpen;
+    }
+    final opening = _openImpl();
+    _dbOpening = opening;
+    try {
+      await opening;
+    } finally {
+      _dbOpening = null;
+    }
+  }
+
+  Future<void> _openImpl() async {
     try {
       final docsPath = await getApplicationDocumentsDirectory();
       final dbPath = join(docsPath.path, dbName);
@@ -258,7 +291,11 @@ class NotesService {
     } on MissingPlatformDirectoryException {
       throw UnableToGetDocumentDirectoryException();
     } catch (_) {
-      await _db?.close();
+      try {
+        await _db?.close();
+      } catch (_) {
+        // Ignore failures while cleaning up a half-opened database.
+      }
       _db = null;
       rethrow;
     }
@@ -269,10 +306,13 @@ class NotesService {
     if (db == null) {
       throw DatabaseIsNotOpenException();
     } else {
-      await db.close();
       _db = null;
-      _notes = [];
-      _emitNotes();
+      try {
+        await db.close();
+      } finally {
+        _notes = [];
+        _emitNotes();
+      }
     }
   }
 }

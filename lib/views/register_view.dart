@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mynotes/services/auth/auth_exceptions.dart';
 import 'package:mynotes/services/auth/auth_service.dart';
+import 'package:mynotes/utilities/dialogs/error_dialog.dart';
 
 class RegisterView extends StatefulWidget {
   const RegisterView({super.key});
@@ -27,28 +28,34 @@ class _RegisterViewState extends State<RegisterView> {
     super.dispose();
   }
 
-  void _showMessage(String message) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
-  }
-
   Future<void> _register() async {
-    final email = _emailController.text;
+    final email = _emailController.text.trim();
     final password = _passwordController.text;
     try {
       await AuthService.firebase().createUser(email: email, password: password);
       await AuthService.firebase().sendEmailVerification();
-    } on WeakPasswordAuthException catch (e) {
-      _showMessage('Weak password: ${e.toString()}');
-    } on EmailAlreadyInUseAuthException catch (e) {
-      _showMessage('Email already in use: ${e.toString()}');
-    } on InvalidEmailAuthException catch (e) {
-      _showMessage('Invalid email: ${e.toString()}');
-    } on GenericAuthException catch (e) {
-      _showMessage('Authentication error: ${e.toString()}');
+    } on WeakPasswordAuthException {
+      await _showAuthError('Weak password', 'Please use a stronger password.');
+    } on EmailAlreadyInUseAuthException {
+      await _showAuthError('Email already in use', 'Try logging in instead.');
+    } on InvalidEmailAuthException {
+      await _showAuthError('Invalid email', 'Please enter a valid email.');
+    } on GenericAuthException {
+      await _showAuthError(
+        'Authentication error',
+        'Something went wrong. Please try again.',
+      );
     } catch (e) {
-      _showMessage('Error: $e');
+      await _showAuthError('Error', e.toString());
+    }
+  }
+
+  Future<void> _showAuthError(String title, String content) async {
+    if (!mounted) return;
+    try {
+      await showErrorDialog(context, title, content);
+    } catch (_) {
+      // The view was popped while the dialog was open.
     }
   }
 
