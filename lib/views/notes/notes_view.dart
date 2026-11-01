@@ -61,6 +61,9 @@ class _NotesViewState extends State<NotesView> {
       body: StreamBuilder(
         stream: _notesService.allNotes(ownerUserId: userId),
         builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          }
           switch (snapshot.connectionState) {
             case ConnectionState.waiting:
             case ConnectionState.active:

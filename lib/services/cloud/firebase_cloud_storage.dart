@@ -20,7 +20,7 @@ class FirebaseCloudStorage {
       final document = await notes.add({
         ownerUserIdFieldName: ownerUserId,
         textFieldName: text,
-        createdAtFieldName: DateTime.now().toIso8601String(),
+        createdAtFieldName: FieldValue.serverTimestamp(),
       });
       final fetchedNote = await document.get();
       return CloudNote.fromSnapshot(
@@ -39,11 +39,37 @@ class FirebaseCloudStorage {
     try {
       await notes.doc(documentId).update({
         textFieldName: text,
-        createdAtFieldName: DateTime.now().toIso8601String(),
+        createdAtFieldName: FieldValue.serverTimestamp(),
       });
     } catch (e) {
       throw CouldNotUpdateNoteException();
     }
+  }
+
+  /// Rewrites any note whose [createdAtFieldName] is stored as an ISO-8601
+  /// string into a Firestore [Timestamp].
+  ///
+  /// Older app builds and documents created from the Firebase console stored
+  /// this field as a string, which made date-range queries impossible and
+  /// crashed parsing. Returns the number of documents migrated.
+  Future<int> migrateCreatedAtToTimestamp() async {
+    final snapshot = await notes.get();
+    final batch = FirebaseFirestore.instance.batch();
+    var migrated = 0;
+
+    for (final doc in snapshot.docs) {
+      final value = doc.data()[createdAtFieldName];
+      if (value is String) {
+        final parsed = DateTime.parse(value);
+        batch.update(doc.reference, {createdAtFieldName: Timestamp.fromDate(parsed)});
+        migrated++;
+      }
+    }
+
+    if (migrated > 0) {
+      await batch.commit();
+    }
+    return migrated;
   }
 
   Future<void> deleteNote({required String documentId}) async {
@@ -58,11 +84,12 @@ class FirebaseCloudStorage {
       notes.snapshots().map(
         (event) => event.docs
             .map(
-              (doc) => CloudNote.fromSnapshot(
+              (doc) => CloudNote.tryFromSnapshot(
                 snapshot: doc.data(),
                 documentId: doc.id,
               ),
             )
+            .nonNulls
             .where((note) => note.ownerUserId == ownerUserId),
       );
 
@@ -71,11 +98,13 @@ class FirebaseCloudStorage {
           .where(ownerUserIdFieldName, isEqualTo: ownerUserId)
           .get()
           .then(
-            (snapshot) => snapshot.docs.map(
-              (doc) => CloudNote.fromSnapshot(
-                snapshot: doc.data(),
-                documentId: doc.id,
-              ),
-            ),
+            (snapshot) => snapshot.docs
+                .map(
+                  (doc) => CloudNote.tryFromSnapshot(
+                    snapshot: doc.data(),
+                    documentId: doc.id,
+                  ),
+                )
+                .nonNulls,
           );
 }
