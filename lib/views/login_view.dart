@@ -48,7 +48,7 @@ class _LoginViewState extends State<LoginView> {
   Widget build(BuildContext context) {
     return BlocListener<AuthBloc, AuthState>(
       listener: (context, state) {
-        if (state is AuthStateLoggedOut) {
+        if (state is AuthStateLoggedOut && state.exception != null) {
           if (state.exception is UserNotFoundAuthException) {
             _showMessage('User not found');
           } else if (state.exception is WrongPasswordAuthException) {
