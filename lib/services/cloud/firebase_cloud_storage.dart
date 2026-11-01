@@ -12,16 +12,21 @@ class FirebaseCloudStorage {
   FirebaseCloudStorage._sharedInstance();
   factory FirebaseCloudStorage() => _shared;
 
-  void createNewNote({
+  Future<CloudNote> createNewNote({
     required String ownerUserId,
     required String text,
   }) async {
     try {
-      await notes.add({
+      final document = await notes.add({
         ownerUserIdFieldName: ownerUserId,
         textFieldName: text,
         createdAtFieldName: DateTime.now().toIso8601String(),
       });
+      final fetchedNote = await document.get();
+      return CloudNote.fromSnapshot(
+        snapshot: fetchedNote.data() as Map<String, dynamic>,
+        documentId: fetchedNote.id,
+      );
     } catch (e) {
       throw CouldNotCreateNoteException();
     }
@@ -67,12 +72,8 @@ class FirebaseCloudStorage {
           .get()
           .then(
             (snapshot) => snapshot.docs.map(
-              (doc) => CloudNote(
-                ownerUserId: doc.data()[ownerUserIdFieldName] as String,
-                text: doc.data()[textFieldName] as String,
-                createdAt: DateTime.parse(
-                  doc.data()[createdAtFieldName] as String,
-                ),
+              (doc) => CloudNote.fromSnapshot(
+                snapshot: doc.data(),
                 documentId: doc.id,
               ),
             ),

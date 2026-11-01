@@ -32,7 +32,7 @@ class MockAuthProvider implements AuthProvider {
     required String password,
   }) async {
     if (!_isInitialized) throw NotInitializedException();
-    final user = AuthUser(email: email, isEmailVerified: false);
+    final user = AuthUser(id: email, email: email, isEmailVerified: false);
     _user = user;
     return user;
   }
@@ -54,7 +54,7 @@ class MockAuthProvider implements AuthProvider {
     if (!_isInitialized) throw NotInitializedException();
     final user = _user;
     if (user == null) throw UserNotLoggedInAuthException();
-    _user = AuthUser(email: user.email, isEmailVerified: true);
+    _user = AuthUser(id: user.id, email: user.email, isEmailVerified: true);
   }
 
   @override
