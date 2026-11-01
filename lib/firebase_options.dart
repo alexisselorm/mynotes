@@ -62,7 +62,6 @@ class DefaultFirebaseOptions {
     projectId: 'mynotes-newlearn',
     storageBucket: 'mynotes-newlearn.firebasestorage.app',
   );
-
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyBZYT9DCDrqF5VuLQGAGhms47KLhLv4VBo',
     appId: '1:1017431961506:ios:e466365f016275a9098cfb',

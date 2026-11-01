@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:mynotes/extensions/filter.dart';
 import 'package:path/path.dart' show join;
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
@@ -17,20 +18,38 @@ class NotesService {
   static final NotesService _shared = NotesService._sharedInstance();
   factory NotesService() => _shared;
 
-  Stream<List<DatabaseNotes>> get allNotes => _noteStreamController.stream;
-
+  Stream<List<DatabaseNotes>> get allNotes =>
+      _noteStreamController.stream.filter((DatabaseNotes note) {
+        final currentUser = _user;
+        if (currentUser == null) {
+          throw UserShouldBeSetBeforeReadingAllNotesException();
+        }
+        return note.userId == currentUser.id;
+      });
+  DatabaseUser? _user;
   Database? _db;
   Future<void>? _dbOpening;
   List<DatabaseNotes> _notes = [];
 
   late final StreamController<List<DatabaseNotes>> _noteStreamController;
 
-  Future<DatabaseUser> getOrCreateUser({required String email}) async {
+  Future<DatabaseUser> getOrCreateUser({
+    required String email,
+    bool setAsCurrentUser = true,
+  }) async {
     await _ensureDbIsOpen();
     try {
-      return await getUser(email: email);
+      final user = await getUser(email: email);
+      if (setAsCurrentUser) {
+        _user = user;
+      }
+      return user;
     } on CouldNotFindUserException {
-      return await createUser(email: email);
+      final createdUser = await createUser(email: email);
+      if (setAsCurrentUser) {
+        _user = createdUser;
+      }
+      return createdUser;
     }
   }
 
