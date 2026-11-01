@@ -50,4 +50,9 @@ class AuthService implements AuthProvider {
 
   @override
   Stream<AuthUser?> get authStateChanges => _authProvider.authStateChanges;
+
+  @override
+  Future<void> sendPasswordReset({required String toEmail}) async {
+    return await _authProvider.sendPasswordReset(toEmail: toEmail);
+  }
 }

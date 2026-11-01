@@ -7,9 +7,9 @@ import 'package:mynotes/services/auth/bloc/auth_bloc.dart';
 import 'package:mynotes/services/auth/bloc/auth_event.dart';
 import 'package:mynotes/services/auth/bloc/auth_state.dart';
 import 'package:mynotes/services/auth/firebase_auth_provider.dart';
-import 'package:mynotes/utilities/dialogs/loading_dialog.dart';
 import 'package:mynotes/views/login_view.dart';
 import 'package:mynotes/views/notes/create_update_note_view.dart';
+import 'package:mynotes/views/notes/forgot_password_view.dart';
 import 'package:mynotes/views/notes/notes_view.dart';
 import 'package:mynotes/views/register_view.dart';
 import 'package:mynotes/views/verify_email_view.dart';
@@ -45,12 +45,12 @@ class HomePage extends StatelessWidget {
     return BlocConsumer<AuthBloc, AuthState>(
       listener: (context, state) {
         if (state.isLoading) {
-          LoadingScreen().show(
+          LoadingScreen.instance().show(
             context: context,
             text: state.loadingText ?? 'Please wait a moment',
           );
         } else {
-          LoadingScreen().hide();
+          LoadingScreen.instance().hide();
         }
       },
       builder: (context, state) {
@@ -62,10 +62,10 @@ class HomePage extends StatelessWidget {
           return const VerifyEmailView();
         } else if (state is AuthStateLoggedIn) {
           return const NotesView();
-        } else if (state is AuthStateLoggedOut) {
-          return const LoginView();
         } else if (state is AuthStateRegistering) {
           return const RegisterView();
+        } else if (state is AuthStateForgotPassword) {
+          return const ForgotPasswordView();
         } else {
           return const Center(child: CircularProgressIndicator());
         }

@@ -9,4 +9,8 @@ class LoadingScreenController {
   final UpdateLoadingScreen _update;
 
   const LoadingScreenController({required this._close, required this._update});
+
+  bool close() => _close();
+
+  bool update(String text) => _update(text);
 }

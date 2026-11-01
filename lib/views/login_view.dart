@@ -4,7 +4,6 @@ import 'package:mynotes/services/auth/auth_exceptions.dart';
 import 'package:mynotes/services/auth/bloc/auth_bloc.dart';
 import 'package:mynotes/services/auth/bloc/auth_event.dart';
 import 'package:mynotes/services/auth/bloc/auth_state.dart';
-import 'package:mynotes/utilities/dialogs/loading_dialog.dart';
 
 class LoginView extends StatefulWidget {
   const LoginView({super.key});
@@ -95,6 +94,14 @@ class _LoginViewState extends State<LoginView> {
                     );
                   },
                   child: const Text('No Account? Register here!'),
+                ),
+                TextButton(
+                  onPressed: () {
+                    context.read<AuthBloc>().add(
+                      const AuthEventForgotPassword(),
+                    );
+                  },
+                  child: const Text('I forgot my Password!'),
                 ),
               ],
             ),
