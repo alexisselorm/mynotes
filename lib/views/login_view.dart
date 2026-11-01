@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mynotes/constants/routes.dart';
 import 'package:mynotes/services/auth/auth_exceptions.dart';
 import 'package:mynotes/services/auth/auth_service.dart';
+import 'package:mynotes/services/auth/bloc/auth_bloc.dart';
+import 'package:mynotes/services/auth/bloc/auth_event.dart';
 
 class LoginView extends StatefulWidget {
   const LoginView({super.key});
@@ -34,11 +37,13 @@ class _LoginViewState extends State<LoginView> {
         .showSnackBar(SnackBar(content: Text(message)));
   }
 
-  Future<void> _logIn() async {
+  Future<void> _logIn(BuildContext context) async {
     final email = _emailController.text;
     final password = _passwordController.text;
     try {
-      await AuthService.firebase().logIn(email: email, password: password);
+      context.read<AuthBloc>().add(
+        AuthEventLogIn(email: email, password: password),
+      );
     } on WrongPasswordAuthException {
       _showMessage('Wrong credentials');
     } on UserNotFoundAuthException {
@@ -73,7 +78,10 @@ class _LoginViewState extends State<LoginView> {
                 autocorrect: false,
               ),
               const SizedBox(height: 16),
-              TextButton(onPressed: _logIn, child: const Text('Login')),
+              TextButton(
+                onPressed: () => _logIn(context),
+                child: const Text('Login'),
+              ),
               TextButton(
                 onPressed: () {
                   Navigator.of(context)
