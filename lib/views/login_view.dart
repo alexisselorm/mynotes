@@ -5,6 +5,7 @@ import 'package:mynotes/services/auth/auth_exceptions.dart';
 import 'package:mynotes/services/auth/auth_service.dart';
 import 'package:mynotes/services/auth/bloc/auth_bloc.dart';
 import 'package:mynotes/services/auth/bloc/auth_event.dart';
+import 'package:mynotes/services/auth/bloc/auth_state.dart';
 
 class LoginView extends StatefulWidget {
   const LoginView({super.key});
@@ -40,17 +41,9 @@ class _LoginViewState extends State<LoginView> {
   Future<void> _logIn(BuildContext context) async {
     final email = _emailController.text;
     final password = _passwordController.text;
-    try {
-      context.read<AuthBloc>().add(
-        AuthEventLogIn(email: email, password: password),
-      );
-    } on WrongPasswordAuthException {
-      _showMessage('Wrong credentials');
-    } on UserNotFoundAuthException {
-      _showMessage('User not found');
-    } on GenericAuthException catch (e) {
-      _showMessage('Authentication error: ${e.toString()}');
-    }
+    context.read<AuthBloc>().add(
+      AuthEventLogIn(email: email, password: password),
+    );
   }
 
   @override
@@ -78,9 +71,24 @@ class _LoginViewState extends State<LoginView> {
                 autocorrect: false,
               ),
               const SizedBox(height: 16),
-              TextButton(
-                onPressed: () => _logIn(context),
-                child: const Text('Login'),
+              BlocListener<AuthBloc, AuthState>(
+                listener: (context, state) {
+                  if (state is AuthStateLoggedOut) {
+                    if (state.exception is UserNotFoundAuthException) {
+                      _showMessage('User not found');
+                    } else if (state.exception is WrongPasswordAuthException) {
+                      _showMessage('Wrong credentials');
+                    } else if (state.exception is GenericAuthException) {
+                      _showMessage('Authentication error: ${state.exception}');
+                    } else {
+                      _showMessage('Login failed: ${state.exception}');
+                    }
+                  }
+                },
+                child: TextButton(
+                  onPressed: () => _logIn(context),
+                  child: const Text('Login'),
+                ),
               ),
               TextButton(
                 onPressed: () {
