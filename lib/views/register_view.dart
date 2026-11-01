@@ -52,7 +52,7 @@ class _RegisterViewState extends State<RegisterView> {
   Widget build(BuildContext context) {
     return BlocListener<AuthBloc, AuthState>(
       listener: (context, state) {
-        if (state is AuthStateRegistering) {
+        if (state is AuthStateRegistering && state.exception != null) {
           if (state.exception is WeakPasswordAuthException) {
             _showAuthError('Weak password', 'Please use a stronger password.');
           } else if (state.exception is EmailAlreadyInUseAuthException) {
@@ -98,7 +98,7 @@ class _RegisterViewState extends State<RegisterView> {
                 ),
                 TextButton(
                   onPressed: () {
-                    context.read<AuthBloc>().add(const AuthEventLogOut());
+                    context.read<AuthBloc>().add(const AuthEventShouldLogOut());
                   },
                   child: const Text('Already Registered? Login here!'),
                 ),

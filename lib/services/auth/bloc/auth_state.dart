@@ -59,7 +59,3 @@ class AuthStateForgotPassword extends AuthState {
     required super.isLoading,
   });
 }
-
-class AuthStateShouldRegister extends AuthState {
-  const AuthStateShouldRegister({required super.isLoading});
-}

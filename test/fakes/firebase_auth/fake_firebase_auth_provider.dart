@@ -36,4 +36,9 @@ class FakeFirebaseAuthProvider implements AuthProvider {
 
   @override
   Future<void> reload() async {}
+
+  @override
+  Future<void> sendPasswordReset({required String toEmail}) async {
+    if (toEmail == 'notfound@example.com') throw UserNotFoundAuthException();
+  }
 }

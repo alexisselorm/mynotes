@@ -81,6 +81,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       emit(const AuthStateRegistering(exception: null, isLoading: false));
     });
 
+    on<AuthEventShouldLogOut>((event, emit) {
+      emit(const AuthStateLoggedOut(exception: null, isLoading: false));
+    });
+
     on<AuthEventForgotPassword>((event, emit) async {
       try {
         emit(

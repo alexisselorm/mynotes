@@ -64,6 +64,11 @@ class MockAuthProvider implements AuthProvider {
   }
 
   @override
+  Future<void> sendPasswordReset({required String toEmail}) async {
+    if (!_isInitialized) throw NotInitializedException();
+  }
+
+  @override
   Stream<AuthUser?> get authStateChanges =>
       Stream<AuthUser?>.multi((controller) {
         controller.add(_user);
