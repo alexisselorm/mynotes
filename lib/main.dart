@@ -15,7 +15,9 @@ import 'package:mynotes/views/notes/create_update_note_view.dart';
 import 'package:mynotes/views/notes/forgot_password_view.dart';
 import 'package:mynotes/views/notes/notes_view.dart';
 import 'package:mynotes/views/register_view.dart';
+import 'package:mynotes/views/settings_view.dart';
 import 'package:mynotes/views/verify_email_view.dart';
+import 'package:mynotes/widgets/lock_gate.dart';
 import 'package:mynotes/widgets/splash_gate.dart';
 
 Future<void> main() async {
@@ -62,10 +64,11 @@ class MyNotesApp extends StatelessWidget {
       },
       home: BlocProvider<AuthBloc>(
         create: (context) => AuthBloc(FirebaseAuthProvider()),
-        child: const SplashGate(child: HomePage()),
+        child: LockGate(child: const SplashGate(child: HomePage())),
       ),
       routes: {
         createUpdateNoteRoute: (context) => const CreateUpdateNoteView(),
+        settingsRoute: (context) => const SettingsView(),
       },
     );
   }
