@@ -10,6 +10,8 @@ import 'package:mynotes/services/auth/bloc/auth_bloc.dart';
 import 'package:mynotes/services/auth/bloc/auth_event.dart';
 import 'package:mynotes/services/auth/bloc/auth_state.dart';
 import 'package:mynotes/services/auth/firebase_auth_provider.dart';
+import 'package:mynotes/services/lock/biometric_service.dart';
+import 'package:mynotes/services/lock/lock_service.dart';
 import 'package:mynotes/views/login_view.dart';
 import 'package:mynotes/views/notes/create_update_note_view.dart';
 import 'package:mynotes/views/notes/forgot_password_view.dart';
@@ -32,44 +34,75 @@ Future<void> main() async {
   runApp(const MyNotesApp());
 }
 
-class MyNotesApp extends StatelessWidget {
+class MyNotesApp extends StatefulWidget {
   const MyNotesApp({super.key});
 
   @override
+  State<MyNotesApp> createState() => _MyNotesAppState();
+}
+
+class _MyNotesAppState extends State<MyNotesApp> {
+  // Owned above MaterialApp so the lock gate in the builder and every pushed
+  // route can reach them. AuthBloc lives here too because the gate reads the
+  // auth state to tell a fresh boot from a real screen worth covering.
+  final _lockService = LockService();
+  final _biometrics = BiometricService();
+  final _authBloc = AuthBloc(FirebaseAuthProvider());
+
+  @override
+  void dispose() {
+    _authBloc.close();
+    _lockService.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'My Notes',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.light(),
-      darkTheme: AppTheme.dark(),
-      themeMode: ThemeMode.system,
-      builder: (context, child) {
-        final isDark = Theme.of(context).brightness == Brightness.dark;
-        return AnnotatedRegion<SystemUiOverlayStyle>(
-          value: SystemUiOverlayStyle(
-            statusBarColor: Colors.transparent,
-            statusBarIconBrightness: isDark
-                ? Brightness.light
-                : Brightness.dark,
-            statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
-            systemNavigationBarColor:
-                isDark ? AppColors.darkCanvas : AppColors.lightCanvas,
-            systemNavigationBarIconBrightness: isDark
-                ? Brightness.light
-                : Brightness.dark,
-            systemNavigationBarDividerColor: Colors.transparent,
-          ),
-          child: child ?? const SizedBox.shrink(),
-        );
-      },
-      home: BlocProvider<AuthBloc>(
-        create: (context) => AuthBloc(FirebaseAuthProvider()),
-        child: LockGate(child: const SplashGate(child: HomePage())),
+    return BlocProvider<AuthBloc>.value(
+      value: _authBloc,
+      child: LockScope(
+        lockService: _lockService,
+        biometrics: _biometrics,
+        child: MaterialApp(
+          title: 'My Notes',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.light(),
+          darkTheme: AppTheme.dark(),
+          themeMode: ThemeMode.system,
+          builder: (context, child) {
+            final isDark = Theme.of(context).brightness == Brightness.dark;
+            return AnnotatedRegion<SystemUiOverlayStyle>(
+              value: SystemUiOverlayStyle(
+                statusBarColor: Colors.transparent,
+                statusBarIconBrightness: isDark
+                    ? Brightness.light
+                    : Brightness.dark,
+                statusBarBrightness: isDark
+                    ? Brightness.dark
+                    : Brightness.light,
+                systemNavigationBarColor: isDark
+                    ? AppColors.darkCanvas
+                    : AppColors.lightCanvas,
+                systemNavigationBarIconBrightness: isDark
+                    ? Brightness.light
+                    : Brightness.dark,
+                systemNavigationBarDividerColor: Colors.transparent,
+              ),
+              // Below MaterialApp's Theme and above its Navigator, so the lock
+              // also covers routed screens such as settings. The splash rides
+              // along so the boot screen and its veil stay one screen.
+              child: LockGate(
+                child: SplashGate(child: child ?? const SizedBox.shrink()),
+              ),
+            );
+          },
+          home: const HomePage(),
+          routes: {
+            createUpdateNoteRoute: (context) => const CreateUpdateNoteView(),
+            settingsRoute: (context) => const SettingsView(),
+          },
+        ),
       ),
-      routes: {
-        createUpdateNoteRoute: (context) => const CreateUpdateNoteView(),
-        settingsRoute: (context) => const SettingsView(),
-      },
     );
   }
 }
@@ -81,8 +114,7 @@ class HomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     context.read<AuthBloc>().add(const AuthEventInitialize());
     return BlocConsumer<AuthBloc, AuthState>(
-      listenWhen: (previous, current) =>
-          current is! AuthStateUninitialized,
+      listenWhen: (previous, current) => current is! AuthStateUninitialized,
       listener: (context, state) {
         // The splash stays up until there is a real screen behind it, not just
         // a spinner. Repeating this on later states is harmless.

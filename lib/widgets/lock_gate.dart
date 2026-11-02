@@ -24,11 +24,14 @@ class LockGate extends StatefulWidget {
 }
 
 class _LockGateState extends State<LockGate> with WidgetsBindingObserver {
-  late final LockService _lockService;
-  late final BiometricService _biometrics;
+  LockService? _ownedService;
+  late LockService _lockService;
+  late BiometricService _biometrics;
 
   bool _locked = true;
-  String? _biometricLabel;
+
+  /// How to name the enrolled biometric in copy, e.g. "fingerprint".
+  String _biometricLabel = 'biometrics';
 
   /// The lock also covers the moment between sessions: once the user has
   /// been signed in, it stays up through sign-out screens until unlocked.
@@ -38,8 +41,9 @@ class _LockGateState extends State<LockGate> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _lockService = LockService();
-    _biometrics = BiometricService();
+    final scope = context.getInheritedWidgetOfExactType<LockScope>();
+    _lockService = scope?.lockService ?? (_ownedService = LockService());
+    _biometrics = scope?.biometrics ?? BiometricService();
     _lockService.addListener(_onLockChanged);
     _load();
   }
@@ -66,11 +70,18 @@ class _LockGateState extends State<LockGate> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused ||
-        state == AppLifecycleState.hidden) {
-      if (_lockService.isEnabled && !_locked) {
-        setState(() => _locked = true);
-      }
+    // Lock as soon as the app is no longer front and centre, not on `paused`:
+    // Android calls paused after it has already taken the recents snapshot,
+    // so the snapshot would show notes.
+    final backgrounded =
+        state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.hidden ||
+        state == AppLifecycleState.paused;
+    if (backgrounded &&
+        _lockService.isEnabled &&
+        !_locked &&
+        _lockService.isLoaded) {
+      setState(() => _locked = true);
     }
   }
 
@@ -86,7 +97,7 @@ class _LockGateState extends State<LockGate> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _lockService.removeListener(_onLockChanged);
-    _lockService.dispose();
+    _ownedService?.dispose();
     super.dispose();
   }
 
@@ -96,65 +107,64 @@ class _LockGateState extends State<LockGate> with WidgetsBindingObserver {
     final loggedIn = state is AuthStateLoggedIn;
     if (loggedIn) _wasLoggedIn = true;
 
-    return _LockScope(
-      lockService: _lockService,
-      biometrics: _biometrics,
-      child: Builder(
-        builder: (context) {
-          final showLock =
-              _lockService.isEnabled && _locked && (loggedIn || _wasLoggedIn);
+    final showLock =
+        _lockService.isEnabled && _locked && (loggedIn || _wasLoggedIn);
 
-          return Stack(
-            fit: StackFit.expand,
-            children: [
-              Offstage(
-                // Keep the whole app alive underneath so the session and the
-                // notes stream survive a lock/unlock cycle, but take it out
-                // of the semantics tree so its content is not announced.
-                offstage: showLock,
-                child: TickerMode(enabled: !showLock, child: widget.child),
-              ),
-              if (showLock)
-                LockScreen(
-                  lockService: _lockService,
-                  biometricService: _biometrics,
-                  biometricLabel: _biometricLabel,
-                  onUnlocked: () {
-                    setState(() => _locked = false);
-                  },
-                ),
-            ],
-          );
-        },
-      ),
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Offstage(
+          // Keep the whole app alive underneath so the session and the notes
+          // stream survive a lock/unlock cycle, but take it out of the
+          // semantics tree so its content is not announced.
+          offstage: showLock,
+          child: TickerMode(enabled: !showLock, child: widget.child),
+        ),
+        if (showLock)
+          LockScreen(
+            lockService: _lockService,
+            biometricService: _biometrics,
+            biometricLabel: _biometricLabel,
+            onUnlocked: () {
+              setState(() => _locked = false);
+            },
+          ),
+      ],
     );
   }
 }
 
-/// Provides the lock service to settings and other descendants.
-class _LockScope extends InheritedNotifier<LockService> {
-  const _LockScope({
-    required LockService lockService,
+/// Holds the lock services where they outlive any single screen.
+///
+/// It lives above [MaterialApp] in [main], so pushed routes (which are built
+/// under MaterialApp's own Navigator) can still reach the lock; a scope placed
+/// inside [LockGate] would be invisible to them.
+class LockScope extends InheritedWidget {
+  const LockScope({
+    super.key,
+    required this.lockService,
     required this.biometrics,
     required super.child,
-  }) : super(notifier: lockService);
+  });
 
+  final LockService lockService;
   final BiometricService biometrics;
 
-  static LockService of(BuildContext context) {
-    final scope = context.dependOnInheritedWidgetOfExactType<_LockScope>();
-    assert(scope != null, 'No LockGate above this context');
-    return scope!.notifier!;
+  static LockScope of(BuildContext context) {
+    final scope = context.dependOnInheritedWidgetOfExactType<LockScope>();
+    assert(scope != null, 'No LockScope above this context');
+    return scope!;
   }
 
-  static BiometricService biometricsOf(BuildContext context) {
-    final scope = context.dependOnInheritedWidgetOfExactType<_LockScope>();
-    assert(scope != null, 'No LockGate above this context');
-    return scope!.biometrics;
-  }
+  @override
+  bool updateShouldNotify(LockScope oldWidget) =>
+      lockService != oldWidget.lockService ||
+      biometrics != oldWidget.biometrics;
 }
 
-/// Public accessors used by the settings page.
-LockService lockServiceOf(BuildContext context) => _LockScope.of(context);
+/// Services for the settings page; screens that change the lock should also
+/// listen to [lockServiceOf] so switches reflect saved state.
+LockService lockServiceOf(BuildContext context) =>
+    LockScope.of(context).lockService;
 BiometricService biometricServiceOf(BuildContext context) =>
-    _LockScope.biometricsOf(context);
+    LockScope.of(context).biometrics;

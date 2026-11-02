@@ -38,7 +38,7 @@ class LockScreen extends StatefulWidget {
   State<LockScreen> createState() => _LockScreenState();
 }
 
-class _LockScreenState extends State<LockScreen> with WidgetsBindingObserver {
+class _LockScreenState extends State<LockScreen> {
   static const _maxFreeAttempts = 5;
 
   late final BiometricService _biometrics =
@@ -51,35 +51,26 @@ class _LockScreenState extends State<LockScreen> with WidgetsBindingObserver {
   Timer? _countdown;
   bool _promptingBiometrics = false;
 
+  /// The sheet is offered once per lock. Re-offering it on every resume traps
+  /// people who would rather type: the system dialog has no escape hatch back
+  /// to this screen, only a cancel. The button below is the retry.
+  bool _biometricsOffered = false;
+
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
     if (widget.lockService.biometricsEnabled) {
       // Let the lock screen paint before the system sheet slides up.
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _authenticateWithBiometrics();
+        if (mounted && !_biometricsOffered) _authenticateWithBiometrics();
       });
     }
   }
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
     _countdown?.cancel();
     super.dispose();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Coming back from the background is a natural moment to re-offer
-    // biometrics, but never without the user asking twice in a row.
-    if (state == AppLifecycleState.resumed &&
-        widget.lockService.biometricsEnabled &&
-        !_promptingBiometrics &&
-        !_isLockedOut) {
-      _authenticateWithBiometrics();
-    }
   }
 
   bool get _isLockedOut {
@@ -96,6 +87,7 @@ class _LockScreenState extends State<LockScreen> with WidgetsBindingObserver {
 
   Future<void> _authenticateWithBiometrics() async {
     if (_promptingBiometrics || _isLockedOut) return;
+    _biometricsOffered = true;
     setState(() {
       _promptingBiometrics = true;
       _error = null;
@@ -211,9 +203,8 @@ class _LockScreenState extends State<LockScreen> with WidgetsBindingObserver {
                             children: [
                               if (biometricsEnabled) ...[
                                 _BiometricButton(
-                                  label: widget.biometricLabel == null
-                                      ? 'Use biometrics'
-                                      : 'Use ${widget.biometricLabel}',
+                                  label:
+                                      'Use ${widget.biometricLabel ?? 'biometrics'}',
                                   busy: _promptingBiometrics,
                                   onTap: lockedOut
                                       ? null

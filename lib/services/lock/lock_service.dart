@@ -104,7 +104,9 @@ class LockService extends ChangeNotifier {
   Future<bool> verifyPin(String pin) async {
     final current = _settings;
     if (current == null) return true;
-    return compute(_verifyPinHash, (pin, current.pinHash));
+    // Roughly 60 ms of hashing: too slow for the UI thread, but short enough
+    // that not spawning an isolate per attempt is the better trade.
+    return PinHasher.verify(pin, current.pinHash);
   }
 
   Future<void> disable() async {
@@ -117,9 +119,5 @@ class LockService extends ChangeNotifier {
     await _storage.wipe();
     _settings = null;
     notifyListeners();
-  }
-
-  static bool _verifyPinHash((String, String) args) {
-    return PinHasher.verify(args.$1, args.$2);
   }
 }

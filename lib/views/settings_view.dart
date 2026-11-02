@@ -8,7 +8,6 @@ import 'package:mynotes/views/lock/widgets/pin_entry.dart';
 import 'package:mynotes/widgets/app_background.dart';
 import 'package:mynotes/widgets/entrance.dart';
 import 'package:mynotes/widgets/lock_gate.dart';
-import 'package:mynotes/widgets/press_scale.dart';
 
 /// Privacy settings: enabling, changing and removing the PIN lock, and
 /// choosing whether a biometric may stand in for the PIN.
@@ -20,7 +19,8 @@ class SettingsView extends StatefulWidget {
 }
 
 class _SettingsViewState extends State<SettingsView> {
-  late LockService _lock;
+  LockService? _lockRef;
+  LockService get _lock => _lockRef!;
   late BiometricService _biometrics;
 
   bool _biometricsAvailable = false;
@@ -30,9 +30,24 @@ class _SettingsViewState extends State<SettingsView> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _lock = lockServiceOf(context);
+    final lock = lockServiceOf(context);
+    if (identical(lock, _lockRef)) return;
+    _lockRef?.removeListener(_onLockChanged);
+    _lockRef = lock..addListener(_onLockChanged);
     _biometrics = biometricServiceOf(context);
     _refreshBiometrics();
+  }
+
+  @override
+  void dispose() {
+    _lockRef?.removeListener(_onLockChanged);
+    super.dispose();
+  }
+
+  /// The switches follow whatever was saved, including changes made on the
+  /// lock screen's forgot-PIN path.
+  void _onLockChanged() {
+    if (mounted) setState(() {});
   }
 
   Future<void> _refreshBiometrics() async {
@@ -146,109 +161,125 @@ class _SettingsViewState extends State<SettingsView> {
         // AppBackground is an expanding Stack, so it needs a bounded height
         // before the scrollable goes inside it.
         child: SizedBox.expand(
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
-            children: [
-              Entrance(
-                child: Text('Privacy', style: AppType.overline(scheme.primary)),
-              ),
-              const SizedBox(height: 10),
-              Entrance(
-                delay: const Duration(milliseconds: 60),
-                child: Text(
-                  'Keep your notes to yourself',
-                  style: TextStyle(
-                    fontFamily: AppFonts.display,
-                    fontSize: 26,
-                    height: 1.15,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: -0.5,
-                    color: scheme.onSurface,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Entrance(
-                delay: const Duration(milliseconds: 120),
-                child: Text(
-                  'The app locks whenever you leave it and asks for your PIN '
-                  'or $_biometricLabel when you come back.',
-                  style: AppType.style(
-                    scheme.onSurfaceVariant,
-                    14,
-                    height: 1.55,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 26),
-              _SettingsCard(
+          // A Column scrolling inside a RefreshIndicator rather than a bare
+          // ListView: the indicator needs a viewport below it, and this way
+          // opening the page does not throw a layout assert.
+          child: RefreshIndicator(
+            color: Theme.of(context).colorScheme.primary,
+            onRefresh: _refreshBiometrics,
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _SettingsRow(
-                    icon: Icons.pin_outlined,
-                    title: 'PIN lock',
-                    subtitle: enabled ? 'On' : 'Off',
-                    trailing: Switch.adaptive(
-                      value: enabled,
-                      onChanged: _working
-                          ? null
-                          : (value) => value ? _enableLock() : _disableLock(),
+                  Entrance(
+                    child: Text(
+                      'Privacy',
+                      style: AppType.overline(scheme.primary),
                     ),
-                    onTap: _working
-                        ? null
-                        : (enabled ? _disableLock : _enableLock),
                   ),
-                  if (enabled) ...[
-                    const Divider(height: 1),
-                    _SettingsRow(
-                      icon: Icons.password_rounded,
-                      title: 'Change PIN',
-                      subtitle: 'Set a new four-digit code',
-                      onTap: _working ? null : _changePin,
-                    ),
-                    const Divider(height: 1),
-                    _SettingsRow(
-                      icon: Icons.fingerprint_rounded,
-                      title: 'Unlock with $_biometricLabel',
-                      subtitle: !_biometricsAvailable
-                          ? 'Not set up on this device'
-                          : _lock.biometricsEnabled
-                          ? 'On. Your PIN still works as a backup.'
-                          : 'Faster than typing your PIN',
-                      trailing: Switch.adaptive(
-                        value: _lock.biometricsEnabled,
-                        onChanged: !_biometricsAvailable || _working
-                            ? null
-                            : _toggleBiometrics,
+                  const SizedBox(height: 10),
+                  Entrance(
+                    delay: const Duration(milliseconds: 60),
+                    child: Text(
+                      'Keep your notes to yourself',
+                      style: TextStyle(
+                        fontFamily: AppFonts.display,
+                        fontSize: 26,
+                        height: 1.15,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: -0.5,
+                        color: scheme.onSurface,
                       ),
-                      onTap: !_biometricsAvailable || _working
-                          ? null
-                          : () => _toggleBiometrics(!_lock.biometricsEnabled),
                     ),
-                  ],
+                  ),
+                  const SizedBox(height: 8),
+                  Entrance(
+                    delay: const Duration(milliseconds: 120),
+                    child: Text(
+                      'The app locks whenever you leave it and asks for your PIN '
+                      'or $_biometricLabel when you come back.',
+                      style: AppType.style(
+                        scheme.onSurfaceVariant,
+                        14,
+                        height: 1.55,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 26),
+                  _SettingsCard(
+                    children: [
+                      _SettingsRow(
+                        icon: Icons.pin_outlined,
+                        title: 'PIN lock',
+                        subtitle: enabled ? 'On' : 'Off',
+                        trailing: Switch.adaptive(
+                          value: enabled,
+                          onChanged: _working
+                              ? null
+                              : (value) =>
+                                    value ? _enableLock() : _disableLock(),
+                        ),
+                        onTap: _working
+                            ? null
+                            : (enabled ? _disableLock : _enableLock),
+                      ),
+                      if (enabled) ...[
+                        const Divider(height: 1),
+                        _SettingsRow(
+                          icon: Icons.password_rounded,
+                          title: 'Change PIN',
+                          subtitle: 'Set a new four-digit code',
+                          onTap: _working ? null : _changePin,
+                        ),
+                        const Divider(height: 1),
+                        _SettingsRow(
+                          icon: Icons.fingerprint_rounded,
+                          title: 'Unlock with $_biometricLabel',
+                          subtitle: !_biometricsAvailable
+                              ? 'Not set up on this device'
+                              : _lock.biometricsEnabled
+                              ? 'On. Your PIN still works as a backup.'
+                              : 'Faster than typing your PIN',
+                          trailing: Switch.adaptive(
+                            value: _lock.biometricsEnabled,
+                            onChanged: !_biometricsAvailable || _working
+                                ? null
+                                : _toggleBiometrics,
+                          ),
+                          onTap: !_biometricsAvailable || _working
+                              ? null
+                              : () =>
+                                    _toggleBiometrics(!_lock.biometricsEnabled),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+                  if (!_biometricsAvailable)
+                    Entrance(
+                      delay: const Duration(milliseconds: 160),
+                      child: _HintCard(
+                        icon: Icons.info_outline_rounded,
+                        text:
+                            'To unlock with a fingerprint or face, add one in your '
+                            'device settings first.',
+                      ),
+                    )
+                  else if (!enabled)
+                    Entrance(
+                      delay: const Duration(milliseconds: 160),
+                      child: _HintCard(
+                        icon: Icons.fingerprint_rounded,
+                        text:
+                            'This device supports $_biometricLabel. Turn on PIN lock '
+                            'to use it.',
+                      ),
+                    ),
                 ],
               ),
-              const SizedBox(height: 18),
-              if (!_biometricsAvailable)
-                Entrance(
-                  delay: const Duration(milliseconds: 160),
-                  child: _HintCard(
-                    icon: Icons.info_outline_rounded,
-                    text:
-                        'To unlock with a fingerprint or face, add one in your '
-                        'device settings first.',
-                  ),
-                )
-              else if (!enabled)
-                Entrance(
-                  delay: const Duration(milliseconds: 160),
-                  child: _HintCard(
-                    icon: Icons.fingerprint_rounded,
-                    text:
-                        'This device supports $_biometricLabel. Turn on PIN lock '
-                        'to use it.',
-                  ),
-                ),
-            ],
+            ),
           ),
         ),
       ),
@@ -296,7 +327,11 @@ class _SettingsRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return PressScale(
+    // The row is its own gesture detector rather than a PressScale: the
+    // trailing switch handles its own taps, and here a miss on the row should
+    // do nothing instead of swallowing the gesture.
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
