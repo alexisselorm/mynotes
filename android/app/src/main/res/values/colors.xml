@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Matches the Flutter splash veil gradient so startup has no flash. -->
+    <!-- Brand field used by the launch window and the Flutter splash veil. -->
     <color name="launch_background">#2E7D4F</color>
+    <!-- Android 12+ system splash. Same green as the veil, so the system
+         splash, the launch window and Flutter read as one field of colour. -->
+    <color name="splash_background">#2E7D4F</color>
     <color name="ic_launcher_background">#269638</color>
 </resources>

@@ -1,5 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Pre-Android 12 launch screen: the brand gradient with the app mark, so the
+     handoff to the Flutter splash veil (same gradient) is seamless. -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Solid brand field; the Flutter splash veil continues from this colour. -->
-    <item android:drawable="@color/launch_background" />
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="315"
+                android:startColor="#3A9A63"
+                android:endColor="#1D5737"
+                android:type="linear" />
+        </shape>
+    </item>
+    <item
+        android:width="108dp"
+        android:height="108dp"
+        android:gravity="center"
+        android:drawable="@mipmap/ic_launcher" />
 </layer-list>

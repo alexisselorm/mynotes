@@ -77,7 +77,14 @@ class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     context.read<AuthBloc>().add(const AuthEventInitialize());
-    return BlocBuilder<AuthBloc, AuthState>(
+    return BlocConsumer<AuthBloc, AuthState>(
+      listenWhen: (previous, current) =>
+          current is! AuthStateUninitialized,
+      listener: (context, state) {
+        // The splash stays up until there is a real screen behind it, not just
+        // a spinner. Repeating this on later states is harmless.
+        SplashGate.markAppReady(context);
+      },
       builder: (context, state) {
         // User-triggered work (sign in, sign out, reset) shows a small
         // non-blocking status pill. The pill is dismissed as soon as the
@@ -117,10 +124,7 @@ class _BootScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const ColoredBox(
-      color: AppColors.brandStrong,
-      child: SizedBox.expand(),
-    );
+    return const SizedBox.expand();
   }
 }
 
