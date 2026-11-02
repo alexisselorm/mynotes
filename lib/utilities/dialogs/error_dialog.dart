@@ -10,6 +10,6 @@ Future<void> showErrorDialog(
     context: context,
     title: title,
     content: content,
-    optionsBuilder: () => {'OK': null},
+    options: const [DialogOption('Got it', null)],
   );
 }

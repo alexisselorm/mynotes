@@ -3,11 +3,15 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mynotes/services/auth/bloc/auth_bloc.dart';
 import 'package:mynotes/services/auth/bloc/auth_event.dart';
 import 'package:mynotes/services/auth/bloc/auth_state.dart';
+import 'package:mynotes/theme/app_typography.dart';
 import 'package:mynotes/utilities/dialogs/error_dialog.dart';
 import 'package:mynotes/utilities/dialogs/password_reset_email_sent_dialog.dart';
+import 'package:mynotes/widgets/app_buttons.dart';
+import 'package:mynotes/widgets/app_text_field.dart';
+import 'package:mynotes/widgets/auth_scaffold.dart';
 
 class ForgotPasswordView extends StatefulWidget {
-  const new({super.key});
+  const ForgotPasswordView({super.key});
 
   @override
   State<ForgotPasswordView> createState() => _ForgotPasswordViewState();
@@ -30,6 +34,7 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return BlocListener<AuthBloc, AuthState>(
       listener: (context, state) async {
         if (state is AuthStateForgotPassword) {
@@ -39,45 +44,62 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
           } else if (state.exception != null) {
             await showErrorDialog(
               context,
-              "Failure",
-              "We could not send you a password reset link. Please make sure you are registered and try again.",
+              'Email not sent',
+              'We could not send you a password reset link. '
+                  'Please make sure you are registered and try again.',
             );
           }
         }
       },
-      child: Scaffold(
-        appBar: AppBar(title: const Text('Forgot Password')),
-        body: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
+      child: AuthScaffold(
+        showBack: true,
+        overline: 'Password help',
+        title: 'Reset password',
+        subtitle: 'Enter your email and we will send you a secure reset link.',
+        children: [
+          AppTextField(
+            controller: _controller,
+            label: 'Email',
+            hint: 'you@example.com',
+            keyboardType: TextInputType.emailAddress,
+            textInputAction: TextInputAction.done,
+            enableSuggestions: false,
+            autocorrect: false,
+            autofillHints: const [AutofillHints.email],
+            onSubmitted: (_) => _sendReset(context),
+          ),
+          const SizedBox(height: 24),
+          PrimaryButton(
+            label: 'Send reset link',
+            icon: Icons.arrow_forward_rounded,
+            onPressed: () => _sendReset(context),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              TextField(
-                decoration: const InputDecoration(labelText: 'Email'),
-                controller: _controller,
-                autofocus: false,
-                autocorrect: false,
+              Text(
+                'Remembered it?',
+                style: AppType.style(scheme.onSurfaceVariant, 13.5),
               ),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () {
-                  final email = _controller.text;
-                  context.read<AuthBloc>().add(
-                    AuthEventForgotPassword(email: email),
-                  );
-                },
-                child: const Text('Send Password Reset Email'),
-              ),
-              TextButton(
+              LinkButton(
+                label: 'Back to sign in',
                 onPressed: () {
                   _controller.clear();
                   context.read<AuthBloc>().add(const AuthEventLogOut());
                 },
-                child: const Text('Back to Login'),
               ),
             ],
           ),
-        ),
+        ],
       ),
     );
+  }
+
+  void _sendReset(BuildContext context) {
+    final email = _controller.text.trim();
+    if (email.isEmpty) return;
+    FocusScope.of(context).unfocus();
+    context.read<AuthBloc>().add(AuthEventForgotPassword(email: email));
   }
 }

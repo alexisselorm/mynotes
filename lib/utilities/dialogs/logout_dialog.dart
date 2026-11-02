@@ -4,8 +4,11 @@ import 'package:mynotes/utilities/dialogs/generic_dialog.dart';
 Future<bool> showLogoutDialog(BuildContext context) {
   return showGenericDialog<bool>(
     context: context,
-    title: 'Sign Out',
-    content: 'Are you sure you want to sign out?',
-    optionsBuilder: () => {'Cancel': false, 'Sign Out': true},
+    title: 'Sign out?',
+    content: 'You can sign back in any time. Your notes are kept safe.',
+    options: const [
+      DialogOption('Cancel', false),
+      DialogOption('Sign out', true),
+    ],
   ).then((value) => value ?? false);
 }

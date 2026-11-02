@@ -1,11 +1,11 @@
 {
-    "name": "mynotes",
-    "short_name": "mynotes",
+    "name": "My Notes",
+    "short_name": "My Notes",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#3FD432",
-    "theme_color": "#3FD432",
-    "description": "A new Flutter project.",
+    "background_color": "#2E7D4F",
+    "theme_color": "#2E7D4F",
+    "description": "A calm, private notebook for your thoughts.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
