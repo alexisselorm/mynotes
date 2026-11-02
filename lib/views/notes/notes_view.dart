@@ -307,6 +307,9 @@ class _AccountButton extends StatelessWidget {
     return PopupMenuButton<MenuAction>(
       onSelected: (value) {
         if (value == MenuAction.logout) onLogout();
+        if (value == MenuAction.settings) {
+          Navigator.of(context).pushNamed(settingsRoute);
+        }
       },
       offset: const Offset(0, 52),
       tooltip: 'Account',
@@ -319,6 +322,16 @@ class _AccountButton extends StatelessWidget {
           ),
         ),
         const PopupMenuDivider(),
+        const PopupMenuItem<MenuAction>(
+          value: MenuAction.settings,
+          child: Row(
+            children: [
+              Icon(Icons.tune_rounded, size: 18),
+              SizedBox(width: 10),
+              Text('Settings'),
+            ],
+          ),
+        ),
         const PopupMenuItem<MenuAction>(
           value: MenuAction.logout,
           child: Row(
