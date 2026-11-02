@@ -1,5 +1,7 @@
 package com.alexisgk.mynotes
 
-import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterFragmentActivity
 
-class MainActivity : FlutterActivity()
+// FragmentActivity (not FlutterActivity) is required by local_auth so the
+// biometric prompt can be hosted in a fragment.
+class MainActivity : FlutterFragmentActivity()

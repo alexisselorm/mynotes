@@ -24,7 +24,9 @@
 		<string>????</string>
 		<key>CFBundleVersion</key>
 		<string>$(FLUTTER_BUILD_NUMBER)</string>
-		<key>LSRequiresIPhoneOS</key>
+		<key>NSFaceIDUsageDescription</key>
+		<string>Unlock your notes with Face ID instead of typing your PIN.</string>
+	<key>LSRequiresIPhoneOS</key>
 		<true/>
 		<key>UIApplicationSceneManifest</key>
 		<dict>
